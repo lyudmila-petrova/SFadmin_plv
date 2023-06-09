@@ -1,0 +1,22 @@
+---
+- hosts: web
+  become: true
+  vars:
+    sudoGroup: "{{ 'sudo' if ansible_distribution == 'Ubuntu' else 'wheel' }}"
+    public_key_path: "{{ playbook_dir }}/config/id_rsa.pub"
+  tasks:
+  - name: Get id_rsa.pub file stat
+    local_action: stat path="{{ public_key_path }}"
+    register: public_key
+
+  - name: Fail if no id_rsa.pub
+    fail:
+      msg: "No id_rsa.pub file found"
+    when: not public_key.stat.exists
+
+  - name: Add user to remote hosts
+    user: name=ansible-user group="{{ sudoGroup }}"  shell=/bin/bash
+
+  - name: Add SSH keys to remote hosts
+    authorized_key: user=ansible-user key="{{ lookup('file', '{{ public_key_path }}') }}"
+
